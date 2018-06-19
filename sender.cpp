@@ -39,20 +39,29 @@ void init(int& shmid, int& msqid, void*& sharedMemPtr)
 
 	// error check for ftok
 	if ((key = ftok("keyfile.txt", 'a')) == -1) {
-         perror("ftok");
+         perror("ftok error");
          exit(1);
   }
 
 	/* TODO: Get the id of the shared memory segment. The size of the segment must be SHARED_MEMORY_CHUNK_SIZE */
-	shmid = shmget(key, SHARED_MEMORY_CHUNK_SIZE, 0666|IPC_CREAT);
+	if ((shmid = shmget(key, SHARED_MEMORY_CHUNK_SIZE, 0666|IPC_CREAT)) == -1) {
+        perror("shmget error");
+        exit(1);
+  }
 
 	/* TODO: Attach to the shared memory */
 	sharedMemPtr = (char*) shmat(shmid,(void*)0,0);
 
+	if(sharedMemPtr == (char*)(-1)){
+			perror("shmat error");
+			exit(1);
+	}
+
+
 	/* TODO: Attach to the message queue */
 	/* Store the IDs and the pointer to the shared memory region in the corresponding parameters */
 	if ((msqid = msgget(key, 0644 | IPC_CREAT)) == -1) {
-			 perror("msgget");
+			 perror("msgget error");
 			 exit(1);
 	}
 
@@ -69,6 +78,12 @@ void cleanUp(const int& shmid, const int& msqid, void* sharedMemPtr)
 {
 	/* TODO: Detach from shared memory */
 	shmdt(sharedMemPtr);
+
+	/* TODO: Deallocate the shared memory chunk */
+	shmctl(shmid, IPC_RMID, NULL);
+
+	/* TODO: Deallocate the message queue */
+	msgctl(msqid, IPC_RMID, NULL);
 }
 
 /**
@@ -94,6 +109,9 @@ void send(const char* fileName)
 		exit(-1);
 	}
 
+	// set the sending message to SENDER_DATA_TYPE
+	sndMsg.mtype = SENDER_DATA_TYPE;
+
 	/* Read the whole file */
 	while(!feof(fp))
 	{
@@ -111,13 +129,23 @@ void send(const char* fileName)
 		/* TODO: Send a message to the receiver telling him that the data is ready
  		 * (message of type SENDER_DATA_TYPE)
  		 */
-		 msgsnd(msqid, &sndMsg, sizeof(sndMsg), SENDER_DATA_TYPE);
-
+		 if (msgsnd(msqid, &sndMsg, sizeof(struct message)- sizeof(long), 0) == -1) {
+		 				perror("(msgsnd) Error sending message");
+		 			//	exit(1);
+		 }else{
+			 			printf("Sending message...\n");
+		 }
 
 		/* TODO: Wait until the receiver sends us a message of type RECV_DONE_TYPE telling us
  		 * that he finished saving the memory chunk.
  		 */
-		 msgrcv(msqid, &rcvMsg, sizeof(rcvMsg), RECV_DONE_TYPE, 1);
+
+		 if (msgrcv(msqid, &rcvMsg, sizeof(struct message)- sizeof(long), RECV_DONE_TYPE, 0) == -1) {
+						perror("(msgrcv) Error receiving message");
+						exit(1);
+		 }else{
+			 			printf("Message received\n");
+		 }
 	}
 
 
@@ -125,8 +153,16 @@ void send(const char* fileName)
  	  * Lets tell the receiver that we have nothing more to send. We will do this by
  	  * sending a message of type SENDER_DATA_TYPE with size field set to 0.
 	  */
- 	msgsnd(msqid, &sndMsg, sizeof(0), 0);
 
+	// the while loop will stop when the message size is 0
+	sndMsg.size	= 0;
+
+
+	if (msgsnd(msqid, &sndMsg, sizeof(struct message) - sizeof(long), 0) == -1) {
+ 				perror("(msgsnd) Error sending message");
+  }else{
+				printf("Sending message...\n");
+	}
 	/* Close the file */
 	fclose(fp);
 

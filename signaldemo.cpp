@@ -1,5 +1,5 @@
 
-/** This program illustrates a simple signal handler 
+/** This program illustrates a simple signal handler
  * for the case where the user presses Ctrl-C. Test
  * it by running it and pressing Ctrl-C.
  */
@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-/* The counter which counts the number 
+/* The counter which counts the number
  * of times the user pressed Ctrl-C
  */
 int count = 9;
@@ -29,7 +29,7 @@ void signalHandlerFunc(int arg)
 		fprintf(stderr, "Ahh you got me!\n");
 		exit(0);
 	}
-	
+
 	--count;
 }
 
@@ -39,14 +39,13 @@ int main()
 	/* Overide the default signal handler for the
 	 * SIGINT signal with signalHandlerFunc
 	 */
-	signal(SIGINT, signalHandlerFunc); 
-	
+	signal(SIGINT, signalHandlerFunc);
+
 	/* Spin the loop forever */
 	for(;;)
 	{
 		sleep(1);
 	}
-	
+
 	return 0;
 }
-

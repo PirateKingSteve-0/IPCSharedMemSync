@@ -45,22 +45,25 @@ void init(int& shmid, int& msqid, void*& sharedMemPtr)
 
 
 	/* TODO: Allocate a piece of shared memory. The size of the segment must be SHARED_MEMORY_CHUNK_SIZE. */
-	shmid = shmget(key, SHARED_MEMORY_CHUNK_SIZE, 0666|IPC_CREAT);
+	if((shmid = shmget(key, SHARED_MEMORY_CHUNK_SIZE, 0666|IPC_CREAT)) == -1) {
+        perror("shmget error");
+        exit(1);
+  }
 	 // IPC_CREAT says to create it, but don't fail if it is already Otherwise
 	 // | 0775 uses the octal permissions similiar to chmod
 
 	/* TODO: Attach to the shared memory */
 	// shmat returns a void pointer that will be treated like a char pointer
   sharedMemPtr = (char*) shmat(shmid,(void*)0,0);
-
 	// shmat returns -1 on failure. This is an error check to check for that -1
-	if(myStr == (char*)(-1))
-		perror("shmat");
-
+	if(sharedMemPtr == (char*)(-1)){
+			perror("shmat error");
+			exit(1);
+	}
 
 	/* TODO: Create a message queue */
 	if ((msqid = msgget(key, 0644 | IPC_CREAT)) == -1) {
-			 perror("msgget");
+			 perror("msgget error");
 			 exit(1);
 	 }
 
@@ -98,6 +101,19 @@ void mainLoop()
      * "recvfile"
      */
 
+		 // Initialize a message that will receive
+		 message recvMessage;
+
+		 if (msgrcv(msqid, &recvMessage, sizeof(struct message)- sizeof(long), SENDER_DATA_TYPE, 0) == -1) {
+		 				perror("(msgrcv) Error receiving message");
+		 				exit(1);
+		 }else{
+						printf("Message received\n");
+		 }
+
+		 // now this will get the size of the recieved message
+		 msgSize = recvMessage.size;
+
 	/* Keep receiving until the sender set the size to 0, indicating that
  	 * there is no more data to send
  	 */
@@ -117,7 +133,28 @@ void mainLoop()
  			 * I.e. send a message of type RECV_DONE_TYPE (the value of size field
  			 * does not matter in this case).
  			 */
-			 msgsnd(msqid, &message, sizeof(0), RECV_DONE_TYPE);
+
+			 // in order to send message of RECV_DONE_TYPE make the mtype of RECV_DONE_TYPE
+			 // this way the sender process knows the message has been received
+			 recvMessage.mtype = RECV_DONE_TYPE;
+
+			 if (msgsnd(msqid, &recvMessage, 0, 0) == -1) {
+						perror("msgsnd -- Error sending message");
+						exit(1);
+			 }else{
+				 		printf("Sending message...\n");
+			 }
+
+			 if (msgrcv(msqid, &recvMessage, sizeof(struct message) - sizeof(long), SENDER_DATA_TYPE, 0) == -1) {
+			 			perror("msgrcv -- Error receiving message");
+			 			exit(1);
+			 }else{
+				 		printf("Message received\n");
+			 }
+
+			 // check the size of the newest received message for while loop
+			 msgSize = recvMessage.size;
+
 		}
 		/* We are done */
 		else
@@ -127,8 +164,6 @@ void mainLoop()
 		}
 	}
 }
-
-
 
 /**
  * Perfoms the cleanup functions
@@ -154,7 +189,7 @@ void cleanUp(const int& shmid, const int& msqid, void* sharedMemPtr)
  * @param signal - the signal type
  */
 
-void ctrlCSignal(int signal)
+void ctrlCSignal(int sig)
 {
 	/* Free system V resources */
 	cleanUp(shmid, msqid, sharedMemPtr);
@@ -163,11 +198,13 @@ void ctrlCSignal(int signal)
 int main(int argc, char** argv)
 {
 
+
 	/* TODO: Install a singnal handler (see signaldemo.cpp sample file).
  	 * In a case user presses Ctrl-c your program should delete message
  	 * queues and shared memory before exiting. You may add the cleaning functionality
  	 * in ctrlCSignal().
  	 */
+	 	signal(SIGINT, ctrlCSignal);
 
 	/* Initialize */
 	init(shmid, msqid, sharedMemPtr);
@@ -176,6 +213,7 @@ int main(int argc, char** argv)
 	mainLoop();
 
 	/** TODO: Detach from shared memory segment, and deallocate shared memory and message queue (i.e. call cleanup) **/
+	cleanUp(shmid, msqid, sharedMemPtr);
 
 	return 0;
 }
