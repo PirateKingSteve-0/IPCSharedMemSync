@@ -157,12 +157,10 @@ void mainLoop()
 
 		}
 		/* We are done */
-		else
-		{
-			/* Close the file */
-			fclose(fp);
-		}
-	}
+		
+	}//end while
+	/* Close the file */
+	fclose(fp);
 }
 
 /**
