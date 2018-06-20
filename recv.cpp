@@ -155,14 +155,11 @@ void mainLoop()
 			 // check the size of the newest received message for while loop
 			 msgSize = recvMessage.size;
 
-		}
+		}//end if
 		/* We are done */
-		else
-		{
-			/* Close the file */
-			fclose(fp);
-		}
-	}
+	}//end while
+	/* Close the file */
+	fclose(fp);
 }
 
 /**
