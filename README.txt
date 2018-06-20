@@ -1,8 +1,8 @@
 CPSC 351-01 
 
 Stephen Lastimosa - slastimosa92@csu.fullerton.edu
-Dayna Anderson - 
-Ian Alvarez - 
+Dayna Anderson - dayna.anderson@csu.fullerton.edu
+Ian Alvarez - ian_alvarez23@csu.fullerton.edu
 
 Programming Language Used: C
 
