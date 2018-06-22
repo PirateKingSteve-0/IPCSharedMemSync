@@ -9,7 +9,7 @@ Dayna Anderson - dayna.anderson@csu.fullerton.edu
 
 Ian Alvarez - ian_alvarez23@csu.fullerton.edu
 
-Programming Language Used: C
+Programming Language Used: C++
 
 Execution:     
 
